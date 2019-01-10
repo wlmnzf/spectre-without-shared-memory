@@ -161,6 +161,7 @@ int main(int argc, const char **argv){
 		//Receive a message from client
 		while( (read_size = recv(client_sock , client_message , sizeof(size_t) , 0)) > 0 ){
 			char result;
+			printf("%d",*(size_t*)client_message);
 			result = victim_function(*(size_t*)client_message);
 
 #ifdef SELF_FLUSH

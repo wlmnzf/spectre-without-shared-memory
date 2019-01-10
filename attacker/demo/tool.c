@@ -23,7 +23,7 @@
 
 // Victim Properties
 #define ARRAY1_SIZE 16 			//Debug
-#define VICTIM_IP "192.168.179.96"
+#define VICTIM_IP "127.0.0.1"
 #define VICTIM_PORT 8888
 
 // Parameters
