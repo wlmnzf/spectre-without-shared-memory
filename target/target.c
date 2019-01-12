@@ -159,15 +159,23 @@ int main(int argc, const char **argv){
 		puts("Connection accepted");
 
 		//Receive a message from client
+		int index=0;
 		while( (read_size = recv(client_sock , client_message , sizeof(size_t) , 0)) > 0 ){
 			char result;
-			printf("%d",*(size_t*)client_message);
+			printf("%d %d\n",index,*(size_t*)client_message);
 			result = victim_function(*(size_t*)client_message);
 
 #ifdef SELF_FLUSH
 			_mm_clflush((void const *)&array1_size); //attack should work without this line... define SELF_FLUSH for debug
 #endif
-
+            if(*(size_t*)client_message==1234)
+			{
+				close(socket_desc);
+				close(client_sock);
+				printf("heihei\n");
+				break;
+			}
+			index++;
 		}
 
 

