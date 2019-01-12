@@ -418,21 +418,25 @@ printf("adsdaa\n");
 
         printf("array2_len:%d  tomo:%d\n",S_array2_len,tomonitor);
 		for(int set_offset=0; set_offset<S_array2_len/tomonitor; set_offset++){
+			printf("\n\nset_offset: %d\n",set_offset);
 			printf("loop\n");
 			bzero(scores_tmp,S_array2_len*sizeof(float));
 			bzero(num_of_comps_tmp,S_array2_len*sizeof(int));
 			bzero(scores_ind,tomonitor*sizeof(int));
 			scores_ind_len=0;
 			nmonitored = find_sets_to_monitor(set_offset,scores_ind,&scores_ind_len,&scouted_sets);
-			printf("nmonitored: %d\n\n",nmonitored);
+			printf("nmonitored: %d\n",nmonitored);
 			if(nmonitored==0) break;
 
 			set_pp_params(1,samples,interval); 				// receive_signal start
+			printf("a\n");
 			send_signal(x, setup_flag);						// send_signal start
+			printf("b\n");
 			scoring(num_of_comps_tmp,scores_tmp,NULL,NULL,nmonitored,samples);
+			printf("c\n");
 
 			for(int i=0;i<nmonitored;i++){
-								printf("scores[%d] = %f += scores_tmp[%d] = %f\n",i,scores[i],i-set_offset*tomonitor, scores_tmp[i-set_offset*tomonitor]);
+				//printf("scores[%d] = %f += scores_tmp[%d] = %f\n\n",i,scores[i],i-set_offset*tomonitor, scores_tmp[i-set_offset*tomonitor]);
 				scores[scores_ind[i]]+=scores_tmp[i];
 				num_of_comps[scores_ind[i]]+=num_of_comps_tmp[i];
 
@@ -442,7 +446,17 @@ printf("adsdaa\n");
 		}
 
 		//Find 1st and 2nd highest scores
-
+		printf("Find 1st and 2nd highest scores\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
+		printf("###########################\n");
 		int j,k,i;
 		j = k = -1;
 		for (i = 0; i < S_array2_len; i++) {
@@ -456,12 +470,15 @@ printf("adsdaa\n");
 			printf("1st = %d, score = %f (%d) , 2nd = %d, score = %f (%d) , Gap = %f,scouted_sets=%d\n",S_array2[j],scores[j]/num_of_comps[j],num_of_comps[j],S_array2[k],scores[k]/num_of_comps[k],num_of_comps[k], (scores[j]/num_of_comps[j]-scores[k]/num_of_comps[k]),scouted_sets);
 
 		ok = ((scores[j]/num_of_comps[j] > SCORE_THRESHOLD) && ((scores[j]/num_of_comps[j]-scores[k]/num_of_comps[k]) > GAP_THRESHOLD) && num_of_comps[j] > MIN_CMPS);
+		printf("OK: %c\n",ok);
 		if(num_of_comps[j]>MAX_CMPS || scouted_sets==0) break;
 		if(!ok)
 			for (int tmpi = 0; tmpi < S_array2_len; tmpi++)
 				if(num_of_comps[tmpi] > 0 && scores[tmpi]/num_of_comps[tmpi]<SCORE_LOWBOUND)
 					suspected_sets[tmpi]=1;
 	}
+
+
 	if(setup_flag){
 		printf("Potential sets for array1[x], array2[array1[x]*256]: \n");
 		for(int i=0;i<S_array2_len;i++){
