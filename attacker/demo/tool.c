@@ -338,6 +338,8 @@ void scoring(int * num_of_comps_tmp, float * scores_tmp, int * activity, int * o
 		uint32_t idle_len = 0;
 
 		num_of_comps_tmp[offset] = 0;
+		// printf("in scoring num_of_comps_tmp[offset]:%d\n",num_of_comps_tmp[offset]);
+		
 		for(int i = offset; i < samples*nmonitored; i+=nmonitored){
 			if(monitor_res[i] == (uint16_t)-1){
 				if (NULL != oos) oos[offset]++;
@@ -433,12 +435,15 @@ printf("adsdaa\n");
 			send_signal(x, setup_flag);						// send_signal start
 			printf("b\n");
 			scoring(num_of_comps_tmp,scores_tmp,NULL,NULL,nmonitored,samples);
+			// printf("num_of_comps_tmp[0]: %d, num_of_comps_tmp[1]:%d\n",num_of_comps_tmp[0],num_of_comps_tmp[1]);
 			printf("c\n");
 
 			for(int i=0;i<nmonitored;i++){
 				//printf("scores[%d] = %f += scores_tmp[%d] = %f\n\n",i,scores[i],i-set_offset*tomonitor, scores_tmp[i-set_offset*tomonitor]);
 				scores[scores_ind[i]]+=scores_tmp[i];
+				printf("i:%d   scores[scores_ind[i]]:%d\n",i,scores[scores_ind[i]]);
 				num_of_comps[scores_ind[i]]+=num_of_comps_tmp[i];
+				printf("i:%d   num_of_comps[scores_ind[i]]:%d   num_of_comps_tmp[i]:%d\n",i,num_of_comps[scores_ind[i]],num_of_comps_tmp[i]);
 
 			}
 
@@ -461,6 +466,7 @@ printf("adsdaa\n");
 		j = k = -1;
 		for (i = 0; i < S_array2_len; i++) {
 			if (j < 0 || scores[i]/num_of_comps[i] >= scores[j]/num_of_comps[j]) {
+				printf("i:%d  j:%d  num_of_comps[i]:%d   num_of_comps[j]:%d\n",i,j,num_of_comps[i],num_of_comps[j]);
 				k = j; j = i;
 			} else if (k < 0 || scores[i]/num_of_comps[i] >= scores[k]/num_of_comps[k]) {
 				k = i;
@@ -469,6 +475,9 @@ printf("adsdaa\n");
 		if(!setup_flag)
 			printf("1st = %d, score = %f (%d) , 2nd = %d, score = %f (%d) , Gap = %f,scouted_sets=%d\n",S_array2[j],scores[j]/num_of_comps[j],num_of_comps[j],S_array2[k],scores[k]/num_of_comps[k],num_of_comps[k], (scores[j]/num_of_comps[j]-scores[k]/num_of_comps[k]),scouted_sets);
 
+		printf("j:%d  scores[j]:%d  num_of_comps[j]:%d\n",j,scores[j],num_of_comps[j]);
+		printf("k:%d  scores[k]:%d  num_of_comps[k]:%d\n",k,scores[k],num_of_comps[k]);
+		// printf("num_of_comps[j]:%d \n",);
 		ok = ((scores[j]/num_of_comps[j] > SCORE_THRESHOLD) && ((scores[j]/num_of_comps[j]-scores[k]/num_of_comps[k]) > GAP_THRESHOLD) && num_of_comps[j] > MIN_CMPS);
 		printf("OK: %c\n",ok);
 		if(num_of_comps[j]>MAX_CMPS || scouted_sets==0) break;
